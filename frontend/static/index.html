@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oktoberfest Live Assistant</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-main: #ffffff;
+    --bg-chat: #f9f9fb;
+    --sidebar-bg: #18181b;
+    --sidebar-surface: #27272a;
+    --sidebar-border: #3f3f46;
+    --sidebar-text: #f4f4f5;
+    --sidebar-muted: #a1a1aa;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --border-light: #e4e4e7;
+    --text-primary: #18181b;
+    --text-secondary: #71717a;
+    --user-bubble: #f4f4f5;
+    --agent-bubble: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ==========================================================================
+     LEFT SIDEBAR (TENTS & MAP)
+     ========================================================================== */
+  #sidebar {
+    width: 380px;
+    min-width: 380px;
+    height: 100vh;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 30;
+    overflow: hidden;
+  }
+
+  #sidebar.collapsed {
+    margin-left: -380px;
+  }
+
+  .sidebar-header {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  .sidebar-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #ffffff;
+  }
+
+  .sidebar-btn {
+    background: transparent;
+    border: none;
+    color: var(--sidebar-muted);
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .sidebar-btn:hover {
+    background: var(--sidebar-surface);
+    color: #ffffff;
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Map Container */
+  .map-card {
+    background: var(--sidebar-surface);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 0.85rem;
+    position: relative;
+  }
+
+  .map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .map-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--sidebar-muted);
+  }
+
+  .wiesn-map-svg {
+    width: 100%;
+    height: 250px;
+    background: #1e1e24;
+    border-radius: 8px;
+    overflow: visible;
+  }
+
+  /* Interactive Map Elements */
+  .tent-rect {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    stroke: #333;
+    stroke-width: 1.5;
+  }
+  .tent-rect:hover {
+    filter: brightness(1.3);
+    stroke: #ffffff;
+    stroke-width: 2.5;
+  }
+  .tent-label {
+    font-size: 10px;
+    font-weight: 600;
+    fill: #ffffff;
+    pointer-events: none;
+    text-anchor: middle;
+  }
+
+  /* Hover Info Card */
+  #tent-info-popup {
+    background: #111113;
+    border: 1px solid #3b82f6;
+    border-radius: 10px;
+    padding: 0.85rem;
+    margin-top: 0.6rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    transition: all 0.2s;
+  }
+  .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .popup-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #60a5fa;
+  }
+  .popup-badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .popup-row {
+    font-size: 0.8rem;
+    margin-top: 0.35rem;
+    color: #d1d5db;
+    display: flex;
+    justify-content: space-between;
+  }
+  .popup-desc {
+    font-size: 0.78rem;
+    color: #9ca3af;
+    margin-top: 0.4rem;
+    line-height: 1.35;
+  }
+  .popup-action {
+    margin-top: 0.6rem;
+    width: 100%;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    transition: background 0.15s;
+  }
+  .popup-action:hover {
+    background: #1d4ed8;
+  }
+
+  /* Tent List section */
+  .tents-section-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--sidebar-muted);
+    margin-top: 0.5rem;
+  }
+
+  .tent-search {
+    width: 100%;
+    background: var(--sidebar-surface);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    color: #ffffff;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .tent-search:focus {
+    border-color: var(--accent);
+  }
+
+  .tents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .tent-item {
+    background: var(--sidebar-surface);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .tent-item:hover {
+    background: #323238;
+    border-color: #4b5563;
+  }
+  .tent-item.active {
+    border-color: #3b82f6;
+    background: #1e293b;
+  }
+  .tent-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tent-item-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #f3f4f6;
+  }
+  .tent-item-brewery {
+    font-size: 0.75rem;
+    color: #9ca3af;
+  }
+
+  /* ==========================================================================
+     MAIN CHAT CANVAS (CHATGPT STYLE)
+     ========================================================================== */
+  #main-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-main);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Top Navigation Bar */
+  .chat-navbar {
+    height: 56px;
+    min-height: 56px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    background: #ffffff;
+    z-index: 10;
+  }
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .nav-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .nav-toggle-btn:hover {
+    background: #f4f4f5;
+    color: var(--text-primary);
+  }
+  .agent-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* Message Stream Container */
+  #chat-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem 1rem 7rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chat-stream {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* Message Rows */
+  .msg-row {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+  }
+  .msg-row.user {
+    justify-content: flex-end;
+  }
+  .msg-row.agent {
+    justify-content: flex-start;
+  }
+
+  .msg-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+  }
+  .msg-row.agent .msg-avatar {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #2563eb;
+  }
+  .msg-row.user .msg-avatar {
+    background: #f4f4f5;
+    border: 1px solid #e4e4e7;
+    color: #52525b;
+    order: 2;
+  }
+
+  .msg-bubble {
+    max-width: 85%;
+    padding: 0.85rem 1.15rem;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    word-break: break-word;
+  }
+
+  .msg-row.user .msg-bubble {
+    background: #f4f4f5;
+    color: #18181b;
+    border-bottom-right-radius: 4px;
+  }
+  .msg-row.agent .msg-bubble {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    color: #18181b;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    border-bottom-left-radius: 4px;
+    width: 100%;
+  }
+
+  /* Welcome Card inside Chat */
+  .welcome-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1.25rem;
+  }
+  .welcome-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .welcome-text {
+    color: #64748b;
+    font-size: 0.92rem;
+    margin-bottom: 0.85rem;
+    line-height: 1.45;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .chip {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    border-radius: 20px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .chip:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+  }
+
+  /* ==========================================================================
+     BOTTOM CHAT INPUT BAR (CHATGPT FLOATING PILL)
+     ========================================================================== */
+  .chat-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 30%, #ffffff 100%);
+    padding: 1rem 1rem 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input-form {
+    width: 100%;
+    max-width: 800px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #d4d4d8;
+    border-radius: 28px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    padding: 6px 8px 6px 18px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input-form:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 18px rgba(59, 130, 246, 0.15);
+  }
+
+  .chat-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 0.98rem;
+    font-family: inherit;
+    background: transparent;
+    color: #18181b;
+  }
+  .chat-input::placeholder {
+    color: #a1a1aa;
+  }
+
+  .send-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #18181b;
+    color: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover {
+    background: #2563eb;
+  }
+  .send-btn:active {
+    transform: scale(0.95);
+  }
+
+  .input-disclaimer {
+    font-size: 0.72rem;
+    color: #a1a1aa;
+    margin-top: 0.45rem;
+    text-align: center;
+  }
+
+  /* ==========================================================================
+     A2UI STYLES
+     ========================================================================== */
+  .a2card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+  }
+  .a2col { display: flex; flex-direction: column; gap: 0.5rem; }
+  .a2row { display: flex; flex-direction: row; gap: 0.5rem; align-items: center; }
+  .a2row.between { justify-content: space-between; }
+  .a2text { font-size: 0.95rem; line-height: 1.45; }
+  .a2text.a2-h1 { font-size: 1.35rem; font-weight: 700; color: #0f172a; }
+  .a2text.a2-h2 { font-size: 1.2rem; font-weight: 700; color: #1e293b; }
+  .a2text.a2-h3 { font-size: 1.05rem; font-weight: 600; color: #334155; }
+  .a2text.a2-caption { font-size: 0.82rem; color: #64748b; }
+  .a2divider { border: none; border-top: 1px solid #e2e8f0; margin: 0.4rem 0; }
+  .a2img { max-width: 100%; border-radius: 8px; display: block; border: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<!-- LEFT SIDEBAR: TENTS & INTERACTIVE MAP -->
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">
+      <span>🥨</span>
+      <span>Wiesn Tents &amp; Map</span>
+    </div>
+    <button class="sidebar-btn" id="btn-collapse" title="Collapse sidebar">
+      <span class="material-symbols-outlined">menu_open</span>
+    </button>
+  </div>
+
+  <div class="sidebar-content">
+    <!-- Map Container -->
+    <div class="map-card">
+      <div class="map-header">
+        <span class="map-title">Grounds Map</span>
+        <span style="font-size: 0.75rem; color: #9ca3af;">Hover tent to inspect</span>
+      </div>
+
+
+      <!-- SVG Map of Theresienwiese -->
+      <svg class="wiesn-map-svg" viewBox="0 0 340 260">
+        <!-- Background Grounds -->
+        <rect x="5" y="5" width="330" height="250" rx="6" fill="#1b1c22" stroke="#2e303d"/>
+        
+        <!-- Northern Entrance & St. Paul -->
+        <rect x="135" y="8" width="70" height="16" rx="3" fill="#374151"/>
+        <text x="170" y="20" class="tent-label" fill="#9ca3af" font-size="9">North Entrance (U-Bahn)</text>
+
+        <!-- Wirtsbudenstraße (Central Alley) -->
+        <line x1="170" y1="28" x2="170" y2="195" stroke="#374151" stroke-width="16" stroke-dasharray="4,4"/>
+        <text x="170" y="115" class="tent-label" fill="#6b7280" font-size="8" transform="rotate(-90 170 115)">Wirtsbudenstraße</text>
+
+        <!-- Schaustellerstraße (Rides / Family Boulevard) -->
+        <line x1="280" y1="35" x2="280" y2="190" stroke="#27272a" stroke-width="12"/>
+        <text x="280" y="115" class="tent-label" fill="#52525b" font-size="7" transform="rotate(90 280 115)">Rides / Ferris Wheel 🎡</text>
+
+        <!-- WEST ROW (Left Column of Beer Tents) -->
+        <!-- Marstall -->
+        <rect class="tent-rect" id="map-marstall" x="65" y="30" width="85" height="26" rx="4" fill="#3b82f6" onmouseenter="showTentInfo('marstall')" onclick="showTentInfo('marstall')"/>
+        <text x="107" y="47" class="tent-label">Marstall</text>
+
+        <!-- Armbrustschützenzelt -->
+        <rect class="tent-rect" id="map-armbrustschuetzen" x="65" y="62" width="85" height="26" rx="4" fill="#10b981" onmouseenter="showTentInfo('armbrustschuetzen')" onclick="showTentInfo('armbrustschuetzen')"/>
+        <text x="107" y="79" class="tent-label">Armbrustschützen</text>
+
+        <!-- Hofbräu-Festzelt -->
+        <rect class="tent-rect" id="map-hofbraeu" x="65" y="94" width="85" height="28" rx="4" fill="#1d4ed8" onmouseenter="showTentInfo('hofbraeu')" onclick="showTentInfo('hofbraeu')"/>
+        <text x="107" y="112" class="tent-label">Hofbräu-Festzelt</text>
+
+        <!-- Hacker-Festzelt -->
+        <rect class="tent-rect" id="map-hacker" x="65" y="128" width="85" height="28" rx="4" fill="#0284c7" onmouseenter="showTentInfo('hacker')" onclick="showTentInfo('hacker')"/>
+        <text x="107" y="146" class="tent-label">Hacker 'Himmel'</text>
+
+        <!-- Schottenhamel -->
+        <rect class="tent-rect" id="map-schottenhamel" x="65" y="162" width="85" height="28" rx="4" fill="#d97706" onmouseenter="showTentInfo('schottenhamel')" onclick="showTentInfo('schottenhamel')"/>
+        <text x="107" y="180" class="tent-label">Schottenhamel</text>
+
+        <!-- EAST ROW (Right Column of Beer Tents) -->
+        <!-- Ochsenbraterei -->
+        <rect class="tent-rect" id="map-ochsenbraterei" x="190" y="30" width="85" height="26" rx="4" fill="#b45309" onmouseenter="showTentInfo('ochsenbraterei')" onclick="showTentInfo('ochsenbraterei')"/>
+        <text x="232" y="47" class="tent-label">Ochsenbraterei</text>
+
+        <!-- Augustiner-Festhalle -->
+        <rect class="tent-rect" id="map-augustiner" x="190" y="62" width="85" height="26" rx="4" fill="#059669" onmouseenter="showTentInfo('augustiner')" onclick="showTentInfo('augustiner')"/>
+        <text x="232" y="79" class="tent-label">Augustiner</text>
+
+        <!-- Paulaner (Winzerer Fähndl) -->
+        <rect class="tent-rect" id="map-paulaner" x="190" y="94" width="85" height="28" rx="4" fill="#ea580c" onmouseenter="showTentInfo('paulaner')" onclick="showTentInfo('paulaner')"/>
+        <text x="232" y="112" class="tent-label">Paulaner (Winzerer)</text>
+
+        <!-- Löwenbräu -->
+        <rect class="tent-rect" id="map-loewenbraeu" x="190" y="128" width="85" height="28" rx="4" fill="#2563eb" onmouseenter="showTentInfo('loewenbraeu')" onclick="showTentInfo('loewenbraeu')"/>
+        <text x="232" y="146" class="tent-label">Löwenbräu-Festhalle</text>
+
+        <!-- Bräurosl -->
+        <rect class="tent-rect" id="map-braeurosl" x="190" y="162" width="85" height="28" rx="4" fill="#0891b2" onmouseenter="showTentInfo('braeurosl')" onclick="showTentInfo('braeurosl')"/>
+        <text x="232" y="180" class="tent-label">Pschorr-Bräurosl</text>
+
+        <!-- SOUTHERN WIESN & BAVARIA STATUE -->
+        <!-- Käfer Wiesn-Schänke -->
+        <rect class="tent-rect" id="map-kaefer" x="45" y="202" width="65" height="24" rx="4" fill="#7c3aed" onmouseenter="showTentInfo('kaefer')" onclick="showTentInfo('kaefer')"/>
+        <text x="77" y="218" class="tent-label">Käfer</text>
+
+        <!-- Weinzelt -->
+        <rect class="tent-rect" id="map-weinzelt" x="116" y="202" width="60" height="24" rx="4" fill="#9333ea" onmouseenter="showTentInfo('weinzelt')" onclick="showTentInfo('weinzelt')"/>
+        <text x="146" y="218" class="tent-label">Weinzelt</text>
+
+        <!-- Bavaria Statue Landmark -->
+        <circle cx="210" cy="214" r="12" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" style="cursor:pointer;" onmouseenter="showTentInfo('bavaria_landmark')"/>
+        <text x="210" y="217" class="tent-label" font-size="8">🗽</text>
+        <text x="210" y="235" class="tent-label" fill="#f59e0b" font-size="8">Bavaria</text>
+
+        <!-- Oide Wiesn -->
+        <rect class="tent-rect" id="map-oide_wiesn" x="245" y="202" width="75" height="24" rx="4" fill="#4d7c0f" onmouseenter="showTentInfo('oide_wiesn')" onclick="showTentInfo('oide_wiesn')"/>
+        <text x="282" y="218" class="tent-label">Oide Wiesn</text>
+      </svg>
+
+      <!-- Hover Information Popup -->
+      <div id="tent-info-popup">
+        <div class="popup-header">
+          <div class="popup-name" id="p-name">Hacker-Festzelt</div>
+          <div class="popup-badge" id="p-brewery">Hacker-Pschorr</div>
+        </div>
+        <div class="popup-row">
+          <span style="color:#9ca3af;">Capacity:</span>
+          <span id="p-cap" style="font-weight:600;">9,300 visitors</span>
+        </div>
+        <div class="popup-row">
+          <span style="color:#9ca3af;">Beer Price:</span>
+          <span id="p-price" style="font-weight:600; color:#34d399;">€15.10 / Maß</span>
+        </div>
+        <div class="popup-desc" id="p-desc">
+          Famous painted cloud ceiling ('Himmel der Bayern'), exuberant rock brass band, and youth party crowd.
+        </div>
+        <button class="popup-action" id="p-btn" onclick="askAboutSelectedTent()">
+          <span class="material-symbols-outlined" style="font-size: 16px;">chat</span>
+          <span>Ask Agent About This Tent</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tents List Section -->
+    <div class="tents-section-title">All Major Beer Tents</div>
+    <input type="text" class="tent-search" id="tent-search-input" placeholder="Search tents (e.g. Augustiner, Hacker)…" oninput="filterTents(this.value)">
+
+    <div class="tents-list" id="tents-list-container">
+      <!-- Generated via JS -->
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CHAT CANVAS -->
+<main id="main-chat">
+  <!-- Navbar -->
+  <nav class="chat-navbar">
+    <div class="nav-left">
+      <button class="nav-toggle-btn" id="btn-toggle-nav" title="Toggle Tents & Map">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <div class="agent-badge">
+        <span>🍻</span>
+        <span>Oktoberfest Live Assistant</span>
+        <span class="status-dot" title="Connected"></span>
+      </div>
+    </div>
+    <button class="nav-toggle-btn" onclick="clearChat()" title="Start New Chat">
+      <span class="material-symbols-outlined" style="font-size: 18px;">restart_alt</span>
+    </button>
+  </nav>
+
+  <!-- Message Stream -->
+  <div id="chat-scroll">
+    <div class="chat-stream" id="log">
+      <!-- Initial Welcome Card -->
+      <div class="msg-row agent">
+        <div class="msg-avatar">🥨</div>
+        <div class="msg-bubble">
+          <div class="welcome-card">
+            <div class="welcome-title">
+              <span>Servus &amp; Welcome to Munich! 🍺</span>
+            </div>
+            <div class="welcome-text">
+              I am your AI Wiesn Companion. Inspect any tent on the map on the left, or ask me live questions about occupancies, free tables, beer prices, rules, and webcam snapshots.
+            </div>
+            <div class="chips">
+              <button type="button" class="chip" onclick="sendPrompt('What is Hacker tent status?')">🎪 Hacker Status</button>
+              <button type="button" class="chip" onclick="sendPrompt('Show me Bavaria webcam')">📸 Bavaria Webcam</button>
+              <button type="button" class="chip" onclick="sendPrompt('Can I get into Schottenhamel right now?')">🍻 Schottenhamel Door</button>
+              <button type="button" class="chip" onclick="sendPrompt('What are the strict rules what NOT to do?')">🚫 What NOT To Do</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Input Bar -->
+  <footer class="chat-footer">
+    <form class="input-form" id="form">
+      <input class="chat-input" id="input" placeholder="Ask about tent occupancies, beer prices, webcam snapshots…" autocomplete="off" autofocus>
+      <button class="send-btn" type="submit" title="Send message">
+        <span class="material-symbols-outlined" style="font-size: 20px;">arrow_upward</span>
+      </button>
+    </form>
+    <div class="input-disclaimer">
+      Oktoberfest Assistant grounds livecam analysis, Firestore database, and Google Maps.
+    </div>
+  </footer>
+</main>
+
+<script>
+/* ==========================================================================
+   STATIC TENT DATABASE (Zero GenAI latency on left side)
+   ========================================================================== */
+const TENT_DATA = {
+  hacker: {
+    id: "hacker",
+    name: "Hacker-Festzelt ('Himmel der Bayern')",
+    brewery: "Hacker-Pschorr",
+    capacity: "9,300 (6,950 in / 2,350 out)",
+    price: "€15.10 / Maß",
+    vibe: "Party & Youthful, painted cloud ceiling, lively brass and rock band.",
+    tip: "Fills up fastest on weekends! Unreserved seating available in central aisles."
+  },
+  schottenhamel: {
+    id: "schottenhamel",
+    name: "Schottenhamel Festhalle",
+    brewery: "Spaten-Franziskaner",
+    capacity: "10,000 (6,000 in / 4,000 out)",
+    price: "€14.95 / Maß",
+    vibe: "Historic & Student crowd. Where the Mayor taps the first keg ('O'zapft is!').",
+    tip: "Square table bench arrangements make chatting and making friends effortless."
+  },
+  augustiner: {
+    id: "augustiner",
+    name: "Augustiner-Festhalle",
+    brewery: "Augustiner-Bräu",
+    capacity: "8,500 (6,000 in / 2,500 out)",
+    price: "€14.90 / Maß",
+    vibe: "Beloved by Munich locals, traditional & authentic, friendly atmosphere.",
+    tip: "Only tent serving exclusively from traditional 200L wooden barrels (Holzfass)."
+  },
+  hofbraeu: {
+    id: "hofbraeu",
+    name: "Hofbräu-Festzelt",
+    brewery: "Hofbräu München",
+    capacity: "9,992 (6,920 in / 3,072 out)",
+    price: "€15.20 / Maß",
+    vibe: "Famous worldwide, wild international party, giant standing room (Stehbereich).",
+    tip: "Great if you don't have a table reservation; large standing area inside."
+  },
+  paulaner: {
+    id: "paulaner",
+    name: "Paulaner Festzelt (Winzerer Fähndl)",
+    brewery: "Paulaner",
+    capacity: "8,450 (6,380 in / 2,070 out)",
+    price: "€15.10 / Maß",
+    vibe: "Giant rotating beer mug on the tower, cozy & balanced crowd, FC Bayern visits.",
+    tip: "Underground beer pipelines deliver freezing fresh beer at record speed."
+  },
+  ochsenbraterei: {
+    id: "ochsenbraterei",
+    name: "Ochsenbraterei",
+    brewery: "Spatenbräu",
+    capacity: "7,600 (5,900 in / 1,700 out)",
+    price: "€15.00 / Maß",
+    vibe: "Culinary favorite, giant whole roasted oxen on a spit, authentic brass music.",
+    tip: "Check the wooden scoreboard above the spit displaying the ox's name and weight!"
+  },
+  loewenbraeu: {
+    id: "loewenbraeu",
+    name: "Löwenbräu-Festhalle",
+    brewery: "Löwenbräu",
+    capacity: "8,500 (5,700 in / 2,800 out)",
+    price: "€15.00 / Maß",
+    vibe: "37m tall tower with a roaring mechanical lion ('Löwenbräu!'), huge 60-member band.",
+    tip: "Listen every few minutes when the giant lion roars over Wirtsbudenstraße."
+  },
+  braeurosl: {
+    id: "braeurosl",
+    name: "Pschorr-Bräurosl",
+    brewery: "Hacker-Pschorr",
+    capacity: "8,250 (6,490 in / 1,760 out)",
+    price: "€15.10 / Maß",
+    vibe: "Yodeling tradition ('Jodel-Rosl'), lofty acoustic hall, 'Rosa Wiesn' first Sunday.",
+    tip: "Very high ceiling gives it a spacious feel and great acoustics for singing."
+  },
+  armbrustschuetzen: {
+    id: "armbrustschuetzen",
+    name: "Armbrustschützenzelt",
+    brewery: "Paulaner",
+    capacity: "7,430 (5,830 in / 1,600 out)",
+    price: "€14.95 / Maß",
+    vibe: "Crossbow shooting hall, rustic hunting lodge Alpine style, family-friendly.",
+    tip: "Hosts the actual German Crossbow Championships during the festival!"
+  },
+  marstall: {
+    id: "marstall",
+    name: "Marstall Festzelt",
+    brewery: "Spaten-Franziskaner",
+    capacity: "4,300 (3,200 in / 1,100 out)",
+    price: "€15.00 / Maß",
+    vibe: "Equine and carousel design, modern chic, champagne and fine dining.",
+    tip: "Features a revolving central carousel bar inside the tent."
+  },
+  kaefer: {
+    id: "kaefer",
+    name: "Käfer Wiesn-Schänke",
+    brewery: "Paulaner",
+    capacity: "3,400 (1,500 in / 1,900 out)",
+    price: "€15.40 / Maß",
+    vibe: "Celebrity hotspot, cozy wooden chalet style, gourmet cuisine, open until 01:00 AM.",
+    tip: "One of only two tents serving past 23:00 (serves until 00:30, closes 01:00)!"
+  },
+  weinzelt: {
+    id: "weinzelt",
+    name: "Kufflers Weinzelt",
+    brewery: "Wine, Sekt & Paulaner Weißbier",
+    capacity: "2,500 (1,900 in / 600 out)",
+    price: "Weißbier / Wine by bottle",
+    vibe: "Wine and champagne focus, cozy wooden boxes, open until 01:00 AM.",
+    tip: "Serves Weißbier until 21:00, then transforms into a full wine & champagne party."
+  },
+  oide_wiesn: {
+    id: "oide_wiesn",
+    name: "Oide Wiesn (Festzelt Tradition)",
+    brewery: "Augustiner in stone Keferloher mugs",
+    capacity: "8,000 (5,000 in / 3,000 out)",
+    price: "€14.75 / Maß",
+    vibe: "Historical folk festival, brass music without loudspeakers, folk dance floor.",
+    tip: "Only €4 entrance fee; much easier to find empty seats on busy weekend afternoons!"
+  },
+  bavaria_landmark: {
+    id: "bavaria_landmark",
+    name: "Bavaria Statue & Ruhmeshalle",
+    brewery: "Open-Air Landmark & Livecam",
+    capacity: "Open festival square",
+    price: "Free view",
+    vibe: "Historic 18m bronze patroness of Bavaria overlooking Theresienwiese.",
+    tip: "The steps of Lady Bavaria are the most famous meeting point on the Wiesn."
+  }
+};
+
+let currentSelectedTent = "hacker";
+
+function showTentInfo(key) {
+  const data = TENT_DATA[key];
+  if (!data) return;
+  currentSelectedTent = key;
+
+  document.getElementById("p-name").textContent = data.name;
+  document.getElementById("p-brewery").textContent = data.brewery;
+  document.getElementById("p-cap").textContent = data.capacity;
+  document.getElementById("p-price").textContent = data.price;
+  document.getElementById("p-desc").textContent = data.vibe + " " + data.tip;
+
+  // Highlight list item if visible
+  document.querySelectorAll(".tent-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.tentId === key);
+  });
+}
+
+function askAboutSelectedTent() {
+  const data = TENT_DATA[currentSelectedTent];
+  if (!data) return;
+  const prompt = `Tell me the live status and admission chances for ${data.name}.`;
+  sendPrompt(prompt);
+}
+
+function renderTentsList(items) {
+  const container = document.getElementById("tents-list-container");
+  container.innerHTML = "";
+  items.forEach(data => {
+    const div = document.createElement("div");
+    div.className = "tent-item" + (data.id === currentSelectedTent ? " active" : "");
+    div.dataset.tentId = data.id;
+    div.innerHTML = `
+      <div class="tent-item-header">
+        <span class="tent-item-name">${data.name.split(" (")[0]}</span>
+        <span style="font-size: 0.72rem; color: #34d399; font-weight: 600;">${data.price.split(" /")[0]}</span>
+      </div>
+      <div class="tent-item-brewery">${data.brewery}</div>
+    `;
+    div.onmouseenter = () => showTentInfo(data.id);
+    div.onclick = () => {
+      showTentInfo(data.id);
+      askAboutSelectedTent();
+    };
+    container.appendChild(div);
+  });
+}
+
+function filterTents(q) {
+  const query = q.toLowerCase().trim();
+  const filtered = Object.values(TENT_DATA).filter(t => 
+    t.name.toLowerCase().includes(query) || 
+    t.brewery.toLowerCase().includes(query) ||
+    t.vibe.toLowerCase().includes(query)
+  );
+  renderTentsList(filtered);
+}
+
+// Sidebar toggle logic
+const sidebar = document.getElementById("sidebar");
+document.getElementById("btn-collapse").onclick = () => sidebar.classList.add("collapsed");
+document.getElementById("btn-toggle-nav").onclick = () => sidebar.classList.toggle("collapsed");
+
+// Initial render of tent list
+renderTentsList(Object.values(TENT_DATA).filter(t => t.id !== "bavaria_landmark"));
+showTentInfo("hacker");
+
+/* ==========================================================================
+   CHAT ENGINE & A2UI MINI-RENDERER
+   ========================================================================== */
+const log = document.getElementById("log");
+const form = document.getElementById("form");
+const input = document.getElementById("input");
+const chatScroll = document.getElementById("chat-scroll");
+
+function sendPrompt(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit"));
+}
+
+function clearChat() {
+  log.innerHTML = "";
+  // Reset initial welcome card
+  const row = document.createElement("div");
+  row.className = "msg-row agent";
+  row.innerHTML = `
+    <div class="msg-avatar">🥨</div>
+    <div class="msg-bubble">
+      <div class="welcome-card">
+        <div class="welcome-title"><span>New Conversation</span></div>
+        <div class="welcome-text">Ask me anything about tent occupancies, live webcams, or seating recommendations.</div>
+      </div>
+    </div>
+  `;
+  log.appendChild(row);
+}
+
+function createMsgRow(who) {
+  const row = document.createElement("div");
+  row.className = "msg-row " + who;
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  avatar.textContent = who === "user" ? "👤" : "🍻";
+  const bubble = document.createElement("div");
+  bubble.className = "msg-bubble";
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  log.appendChild(row);
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+  return bubble;
+}
+
+function boundStr(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v.literalString === "string") return v.literalString;
+  return "";
+}
+
+function childIds(props) {
+  const ids = [];
+  if (props && typeof props.child === "string") ids.push(props.child);
+  const ch = props && props.children;
+  if (ch && Array.isArray(ch.explicitList)) for (const c of ch.explicitList) if (typeof c === "string") ids.push(c);
+  return ids;
+}
+
+function buildNode(id, comps, seen) {
+  if (!id || seen.has(id)) return null;
+  seen.add(id);
+  const spec = comps[id];
+  if (!spec || typeof spec !== "object") return null;
+  const type = Object.keys(spec)[0];
+  const props = spec[type] || {};
+  const kids = () => childIds(props).map(cid => buildNode(cid, comps, seen)).filter(Boolean);
+
+  switch (type) {
+    case "Card": {
+      const d = document.createElement("div");
+      d.className = "a2card";
+      kids().forEach(n => d.appendChild(n));
+      return d;
+    }
+    case "Column":
+    case "List": {
+      const horizontal = type === "List" && props.direction === "horizontal";
+      const d = document.createElement("div");
+      d.className = horizontal ? "a2row" : "a2col";
+      kids().forEach(n => d.appendChild(n));
+      return d;
+    }
+    case "Row": {
+      const d = document.createElement("div");
+      d.className = "a2row" + (props.distribution === "spaceBetween" ? " between" : "");
+      kids().forEach(n => d.appendChild(n));
+      return d;
+    }
+    case "Text": {
+      const t = document.createElement("div");
+      t.className = "a2text";
+      const hint = String(props.usageHint || "body").toLowerCase();
+      if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(hint)) t.classList.add("a2-" + hint);
+      else if (hint === "caption") t.classList.add("a2-caption");
+      t.textContent = boundStr(props.text);
+      return t;
+    }
+    case "Divider": {
+      return document.createElement("hr");
+    }
+    case "Image": {
+      const src = boundStr(props.url || props.src);
+      if (!/^https?:\/\//i.test(src)) return null;
+      const img = document.createElement("img");
+      img.className = "a2img";
+      img.src = src;
+      img.alt = boundStr(props.alt) || "";
+      return img;
+    }
+    default:
+      return null;
+  }
+}
+
+function renderSurface(messages, container) {
+  const comps = {};
+  const roots = [];
+  for (const m of messages) {
+    if (m.beginRendering && typeof m.beginRendering.root === "string") roots.push(m.beginRendering.root);
+    const su = m.surfaceUpdate;
+    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.id && c.component) comps[c.id] = c.component;
+  }
+  let rootIds = roots.filter(r => comps[r]);
+  if (rootIds.length === 0) {
+    const referenced = new Set();
+    for (const id in comps) {
+      const spec = comps[id];
+      childIds(spec[Object.keys(spec)[0]] || {}).forEach(c => referenced.add(c));
+    }
+    rootIds = Object.keys(comps).filter(id => !referenced.has(id));
+  }
+  let drew = false;
+  for (const rid of rootIds) {
+    const node = buildNode(rid, comps, new Set());
+    if (node) { container.appendChild(node); drew = true; }
+  }
+  return drew;
+}
+
+function renderReply(bubble, parts) {
+  bubble.textContent = "";
+  const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
+  const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
+
+  const textStr = texts.join("\n").trim();
+  if (textStr) {
+    const p = document.createElement("div");
+    p.textContent = textStr;
+    bubble.appendChild(p);
+  }
+
+  if (a2ui.length) {
+    renderSurface(a2ui, bubble);
+  }
+  if (!bubble.childNodes.length) bubble.textContent = "(no response)";
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+}
+
+form.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  
+  createMsgRow("user").textContent = text;
+  input.value = "";
+  const b = createMsgRow("agent");
+  b.textContent = "…";
+
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch { throw new Error(`Server returned non-JSON: ${raw.slice(0, 300)}`); }
+    renderReply(b, data.parts || []);
+  } catch (e) {
+    b.textContent = "Error: " + e.message;
+  }
+});
+</script>
+</body>
+</html>
